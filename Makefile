@@ -1,0 +1,106 @@
+.PHONY: help install dev-install lint format test test-cov test-integration migrate migrate-create migrate-down run run-dev compose-up compose-down compose-logs compose-db-shell compose-prod-up compose-prod-down compose-smoke test-mailhog-e2e clean build-docker docker-run check
+
+help:
+	@echo "Service Order Management API - Make Commands"
+	@echo "=============================================="
+	@echo ""
+	@echo "Setup & Installation:"
+	@echo "  make install          Install dependencies"
+	@echo "  make dev-install      Install with dev dependencies"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  make format           Format code with black & isort"
+	@echo "  make lint             Run lint suite"
+	@echo "  make test             Run pytest"
+	@echo "  make test-cov         Run pytest with coverage"
+	@echo "  make test-integration Run integration tests against a real PostgreSQL"
+	@echo ""
+	@echo "Database:"
+	@echo "  make migrate          Apply database migrations"
+	@echo ""
+	@echo "Running:"
+	@echo "  make run              Run API server"
+	@echo "  make run-dev          Run API server with reload"
+	@echo "  make compose-up       Start local Docker stack"
+	@echo "  make compose-smoke    Run a quick local smoke test"
+	@echo "  make test-mailhog-e2e Run MailHog-focused integration tests"
+
+install:
+	uv sync
+
+dev-install:
+	uv sync --dev
+
+format:
+	uv run black src tests
+	uv run isort src tests
+
+lint:
+	uv run black --check src tests
+	uv run isort --check-only src tests
+	uv run flake8 src tests
+
+test:
+	uv run pytest -q
+
+test-cov:
+	uv run pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-report=html
+
+test-integration:
+	INTEGRATION_TESTS_ENABLED=true uv run pytest -q -m integration
+
+migrate:
+	uv run alembic -c alembic/alembic.ini upgrade head
+
+migrate-create:
+	@read -p "Enter migration name: " name; \
+	uv run alembic -c alembic/alembic.ini revision --autogenerate -m "$$name"
+
+migrate-down:
+	uv run alembic -c alembic/alembic.ini downgrade -1
+
+run:
+	uv run uvicorn src.main:app --host 0.0.0.0 --port 8000
+
+run-dev:
+	uv run uvicorn src.main:app --reload
+
+compose-up:
+	docker compose --env-file .env up -d --build
+
+compose-smoke:
+	curl -fsS http://localhost:8000/health >/dev/null
+	curl -fsS http://localhost:8000/health/ready >/dev/null
+	@echo "Compose smoke test passed"
+
+compose-down:
+	docker compose down
+
+compose-logs:
+	docker compose logs -f api
+
+compose-db-shell:
+	docker compose exec postgres psql -U service_order_user -d service_order_db
+
+compose-prod-up:
+	docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+
+compose-prod-down:
+	docker compose --env-file .env.prod -f docker-compose.prod.yml down
+
+test-mailhog-e2e:
+	uv run pytest -q -m mailhog
+
+clean:
+	rm -rf .pytest_cache .coverage coverage.xml htmlcov build dist
+
+build-docker:
+	docker build -t service-order-api:local .
+
+docker-run:
+	docker run -p 8000:8000 \
+		-e DATABASE_URL="postgresql+asyncpg://user:password@host:5432/service_order_db" \
+		service-order-api:local
+
+check: lint test
+	@echo "Checks passed."

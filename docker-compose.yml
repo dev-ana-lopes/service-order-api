@@ -1,0 +1,97 @@
+services:
+  api:
+    image: service-order-api:dev
+    build: .
+    container_name: service-order-api
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    ports:
+      - "8000:8000"
+    env_file:
+      - ${APP_ENV_FILE:-.env}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://service_order_user:service_order_password@postgres:5432/service_order_db}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      APP_NAME: ${APP_NAME:-service-order-api}
+      APP_VERSION: ${APP_VERSION:-2.1.0}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_JSON: ${LOG_JSON:-false}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-SMTP}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:8000}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-*}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@localhost}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_PASSWORD_FILE: ${SMTP_PASSWORD_FILE:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      SMTP_USE_AUTH: ${SMTP_USE_AUTH:-false}
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10}
+      APPROVAL_TOKEN_SECRET: ${APPROVAL_TOKEN_SECRET:-dev-approval-secret-with-32-characters}
+      APPROVAL_TOKEN_SECRET_FILE: ${APPROVAL_TOKEN_SECRET_FILE:-}
+      APPROVAL_TOKEN_TTL_MINUTES: ${APPROVAL_TOKEN_TTL_MINUTES:-60}
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-with-at-least-32-chars}
+      JWT_SECRET_FILE: ${JWT_SECRET_FILE:-}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-60}
+      HEALTHCHECK_TIMEOUT_SECONDS: ${HEALTHCHECK_TIMEOUT_SECONDS:-5}
+      MIGRATE_ON_STARTUP: ${MIGRATE_ON_STARTUP:-true}
+      MIGRATE_MAX_ATTEMPTS: ${MIGRATE_MAX_ATTEMPTS:-30}
+      MIGRATE_RETRY_SLEEP_SECONDS: ${MIGRATE_RETRY_SLEEP_SECONDS:-2}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailhog:
+        condition: service_healthy
+    networks:
+      - service-order-network
+    volumes:
+      - .:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: service-order-postgres
+    environment:
+      POSTGRES_DB: service_order_db
+      POSTGRES_USER: service_order_user
+      POSTGRES_PASSWORD: service_order_password
+    ports:
+      - "5432:5432"
+    networks:
+      - service-order-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U service_order_user -d service_order_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: service-order-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - service-order-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  postgres_data:
+
+networks:
+  service-order-network:
+    driver: bridge

@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: service-order-api-migrate
+  namespace: service-order
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: __API_IMAGE__
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: service-order-api-config
+            - secretRef:
+                name: service-order-api-secret
+          command:
+            - alembic
+            - -c
+            - alembic/alembic.ini
+            - upgrade
+            - head

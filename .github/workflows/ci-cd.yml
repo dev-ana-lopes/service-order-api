@@ -1,0 +1,99 @@
+name: ci-cd-service-order-api
+
+on:
+  pull_request:
+  push:
+    branches: [main, homolog]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  PYTHON_VERSION: "3.12"
+  API_IMAGE_NAME: service-order-api
+  K8S_NAMESPACE: service-order
+  RENDERED_K8S_DIR: .rendered-k8s
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --dev
+      - run: make lint
+      - run: make test-cov
+      - name: Validate rendered manifests
+        run: |
+          TMP_DIR="$(mktemp -d)"
+          ENV_FILE="${TMP_DIR}/k8s.env"
+          OUTPUT_DIR="${TMP_DIR}/rendered-k8s"
+          cat <<'VAR' > "${ENV_FILE}"
+          APP_NAME=service-order-api
+          APP_VERSION=3.0.0
+          ENVIRONMENT=production
+          LOG_LEVEL=INFO
+          LOG_JSON=true
+          EMAIL_PROVIDER=NOOP
+          DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/service_order_db
+          APP_BASE_URL=https://api.example.com/api
+          CORS_ALLOWED_ORIGINS=https://app.example.com
+          TRUSTED_HOSTS=api.example.com
+          JWT_SECRET=jwt-secret-value-with-32-characters
+          CUSTOMER_JWT_SECRET=customer-secret-value-with-32-characters
+          CUSTOMER_JWT_ISSUER=service-order-auth-lambda/production
+          APPROVAL_TOKEN_SECRET=approval-secret-value-with-32-chars
+          JWT_ALGORITHM=HS256
+          JWT_EXPIRATION_MINUTES=60
+          APPROVAL_TOKEN_TTL_MINUTES=60
+          OTEL_ENABLED=true
+          OTEL_SERVICE_NAME=service-order-api
+          OTEL_EXPORTER_OTLP_ENDPOINT=http://datadog-agent.observability:4318/v1/traces
+          DD_SERVICE=service-order-api
+          DD_ENV=production
+          DD_VERSION=3.0.0
+          DD_API_KEY=dd-api-key-placeholder-1234567890
+          HEALTHCHECK_TIMEOUT_SECONDS=5
+          VAR
+          python3 scripts/deploy/render_k8s_manifests.py --env-file "${ENV_FILE}" --output-dir "${OUTPUT_DIR}" --image ghcr.io/example/service-order-api:sha-test
+  build-publish:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      image_ref: ${{ steps.meta.outputs.image_ref }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: |
+          owner="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          echo "image_ref=ghcr.io/${owner}/${{ env.API_IMAGE_NAME }}:sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - run: docker build -t "${{ steps.meta.outputs.image_ref }}" . && docker push "${{ steps.meta.outputs.image_ref }}"
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build-publish
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'homolog' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare env file
+        run: printf '%s' "${{ secrets.APP_ENV }}" > .env.deploy
+      - name: Render manifests
+        run: |
+          python3 scripts/deploy/render_k8s_manifests.py \
+            --env-file .env.deploy \
+            --output-dir "${{ env.RENDERED_K8S_DIR }}" \
+            --image "${{ needs.build-publish.outputs.image_ref }}"
+      - name: Deploy instructions placeholder
+        run: |
+          echo "Apply rendered manifests from ${{ env.RENDERED_K8S_DIR }} to the target k3s cluster"
+          echo "This workflow expects kubectl/auth bootstrap to be configured per environment."

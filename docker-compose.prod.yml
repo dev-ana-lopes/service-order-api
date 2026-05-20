@@ -1,0 +1,69 @@
+services:
+  migrate:
+    image: ${API_IMAGE:-service-order-api:local}
+    container_name: service-order-migrate-prod
+    restart: "no"
+    env_file:
+      - ${APP_ENV_FILE:-.env.prod}
+    environment: &api_environment
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      APP_NAME: ${APP_NAME:-service-order-api}
+      APP_VERSION: ${APP_VERSION:-2.1.0}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      APP_BASE_URL: ${APP_BASE_URL:?APP_BASE_URL is required}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_JSON: ${LOG_JSON:-true}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-NOOP}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:?TRUSTED_HOSTS is required}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_PASSWORD_FILE: ${SMTP_PASSWORD_FILE:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      SMTP_USE_AUTH: ${SMTP_USE_AUTH:-false}
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      APPROVAL_TOKEN_SECRET: ${APPROVAL_TOKEN_SECRET:?APPROVAL_TOKEN_SECRET is required}
+      APPROVAL_TOKEN_SECRET_FILE: ${APPROVAL_TOKEN_SECRET_FILE:-}
+      APPROVAL_TOKEN_TTL_MINUTES: ${APPROVAL_TOKEN_TTL_MINUTES:-60}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_SECRET_FILE: ${JWT_SECRET_FILE:-}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-60}
+      HEALTHCHECK_TIMEOUT_SECONDS: ${HEALTHCHECK_TIMEOUT_SECONDS:-5}
+      MIGRATE_ON_STARTUP: "false"
+    networks:
+      - service-order-network
+    command: ["alembic", "-c", "alembic/alembic.ini", "upgrade", "head"]
+
+  api:
+    image: ${API_IMAGE}
+    container_name: service-order-api-prod
+    init: true
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *api_environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - service-order-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  service-order-network:
+    driver: bridge
