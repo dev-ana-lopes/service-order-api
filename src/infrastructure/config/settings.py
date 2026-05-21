@@ -158,7 +158,8 @@ class Settings(BaseSettings):
         if self.ENVIRONMENT in {"staging", "production"}:
             if len(self.JWT_SECRET) < 32 or _looks_like_placeholder(self.JWT_SECRET):
                 raise ValueError(
-                    "JWT_SECRET must be a strong non-placeholder secret in staging/production"
+                    "JWT_SECRET must be a strong non-placeholder secret "
+                    "in staging/production"
                 )
 
             if self.CUSTOMER_JWT_SECRET and len(self.CUSTOMER_JWT_SECRET) < 32:
@@ -170,22 +171,26 @@ class Settings(BaseSettings):
                 self.approval_token_secret
             ):
                 raise ValueError(
-                    "APPROVAL_TOKEN_SECRET must be a strong non-placeholder secret in staging/production"
+                    "APPROVAL_TOKEN_SECRET must be a strong non-placeholder secret "
+                    "in staging/production"
                 )
 
             if self.approval_token_secret == self.JWT_SECRET:
                 raise ValueError(
-                    "APPROVAL_TOKEN_SECRET must be different from JWT_SECRET in staging/production"
+                    "APPROVAL_TOKEN_SECRET must be different from JWT_SECRET "
+                    "in staging/production"
                 )
 
             if self.CUSTOMER_JWT_SECRET and self.CUSTOMER_JWT_SECRET == self.JWT_SECRET:
                 raise ValueError(
-                    "CUSTOMER_JWT_SECRET must be different from JWT_SECRET in staging/production"
+                    "CUSTOMER_JWT_SECRET must be different from JWT_SECRET "
+                    "in staging/production"
                 )
 
             if _looks_like_placeholder(self.APP_BASE_URL):
                 raise ValueError(
-                    "APP_BASE_URL must point to the real public API address in staging/production"
+                    "APP_BASE_URL must point to the real public API address "
+                    "in staging/production"
                 )
 
             if "*" in self.CORS_ALLOWED_ORIGINS:
@@ -202,7 +207,6 @@ class Settings(BaseSettings):
     @property
     def approval_token_secret(self) -> str:
         return self.APPROVAL_TOKEN_SECRET or self.JWT_SECRET
-
 
 
 def get_settings() -> Settings:

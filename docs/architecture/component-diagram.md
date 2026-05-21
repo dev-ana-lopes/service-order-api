@@ -9,7 +9,7 @@ flowchart LR
   AuthLambda --> RDS[(PostgreSQL RDS)]
   API --> RDS
   API --> DD[Datadog / OTel]
-  API --> PG[Prometheus / Grafana]
+  API --> GF[Grafana dashboards]
   GHA[GitHub Actions] --> GHCR[GHCR]
   GHA --> K3S
 ```

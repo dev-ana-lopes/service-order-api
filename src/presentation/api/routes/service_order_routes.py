@@ -117,8 +117,12 @@ async def _ensure_customer_access(
     service_order_repo: ServiceOrderRepo,
     service_order_id: UUID,
 ) -> ServiceOrder:
-    service_order = await _load_service_order_or_404(service_order_repo, service_order_id)
-    if principal.is_customer and str(service_order.customer_id) != str(principal.customer_id):
+    service_order = await _load_service_order_or_404(
+        service_order_repo, service_order_id
+    )
+    if principal.is_customer and str(service_order.customer_id) != str(
+        principal.customer_id
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Customer token cannot access another customer's service order",
@@ -151,7 +155,9 @@ async def create_service_order(
         if request_customer_id and request_customer_id != str(principal.customer_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Customer token cannot create service orders for another customer",
+                detail=(
+                    "Customer token cannot create service orders " "for another customer"
+                ),
             )
         request_customer_id = str(principal.customer_id)
 
@@ -342,6 +348,7 @@ async def update_service_order_status(
     customer_repo: CustomerRepo,
     service_order_repo: ServiceOrderRepo,
     email_sender: EmailGateway,
+    approval_token_service: ApprovalTokenSvc,
 ) -> ApproveServiceOrderResponse:
     if principal.is_customer:
         raise HTTPException(
@@ -353,6 +360,7 @@ async def update_service_order_status(
         service_order_repo,
         customer_repo,
         email_sender,
+        approval_token_service,
     )
     try:
         updated_status = await use_case.execute(id, request.status)

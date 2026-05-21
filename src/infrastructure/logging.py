@@ -61,7 +61,6 @@ class SensitiveDataFilter(logging.Filter):
         return True
 
 
-
 def mask_cpf(value: str | None) -> str | None:
     if value is None:
         return None
@@ -71,9 +70,12 @@ def mask_cpf(value: str | None) -> str | None:
     return "***.***.***-**"
 
 
-
 def configure_logging(settings: Settings) -> None:
-    formatter_name = "json" if settings.LOG_JSON or settings.ENVIRONMENT in {"staging", "production"} else "standard"
+    formatter_name = (
+        "json"
+        if settings.LOG_JSON or settings.ENVIRONMENT in {"staging", "production"}
+        else "standard"
+    )
 
     dictConfig(
         {

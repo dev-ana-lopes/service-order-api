@@ -5,6 +5,7 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+from src.domain.contracts.token_verifier import AuthenticatedPrincipal
 from src.domain.entities import (
     CatalogService,
     Customer,
@@ -15,7 +16,6 @@ from src.domain.entities import (
 from src.domain.enums import ServiceOrderStatus
 from src.domain.time import utcnow
 from src.infrastructure.config.settings import Settings, get_settings
-from src.domain.contracts.token_verifier import AuthenticatedPrincipal
 from src.presentation.dependencies.auth import require_customer_or_admin_principal
 from src.presentation.dependencies.db_dependencies import (
     get_approval_token_service,

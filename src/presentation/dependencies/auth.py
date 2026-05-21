@@ -7,8 +7,8 @@ from ...application.auth.use_cases import PrincipalResolver
 from ...domain.contracts.token_verifier import AuthenticatedPrincipal
 from ...domain.services import AccessTokenService
 from ...infrastructure.auth.jwt_token_verifier import JwtTokenVerifier
-from .db_dependencies import get_jwt_service
 from ...infrastructure.config.settings import Settings, get_settings
+from .db_dependencies import get_jwt_service
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 

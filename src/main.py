@@ -49,7 +49,6 @@ async def lifespan(app: FastAPI):
     await get_database_session(settings).dispose()
 
 
-
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings)
@@ -100,7 +99,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             path=route_path,
             status_code=response.status_code,
         ).inc()
-        REQUEST_DURATION.labels(method=request.method, path=route_path).observe(duration_ms)
+        REQUEST_DURATION.labels(method=request.method, path=route_path).observe(
+            duration_ms
+        )
 
         logger.info(
             "Request completed",

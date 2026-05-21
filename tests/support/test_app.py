@@ -4,7 +4,6 @@ from src.infrastructure.config.settings import Settings
 from src.main import create_app
 
 
-
 def create_test_app() -> FastAPI:
     settings = Settings(
         DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/db",

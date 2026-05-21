@@ -13,7 +13,6 @@ from ...infrastructure.observability.metrics import SERVICE_ORDER_FAILURES
 logger = logging.getLogger(__name__)
 
 
-
 def register_exception_handlers(app: FastAPI, settings: Settings) -> None:
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(

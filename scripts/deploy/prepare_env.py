@@ -185,6 +185,11 @@ def validate_secret_contract(
         "Approval token secret",
     )
     require_any(values, ("JWT_SECRET", "JWT_SECRET_FILE"), "JWT secret")
+    require_any(
+        values,
+        ("CUSTOMER_JWT_SECRET", "CUSTOMER_JWT_SECRET_FILE"),
+        "Customer JWT secret",
+    )
 
 
 def validate_required_text_fields(values: dict[str, str]) -> None:

@@ -6,7 +6,7 @@ API principal FastAPI da Fase 3 do Tech Challenge FIAP.
 - executar a aplicação principal em Kubernetes;
 - aceitar JWT administrativo e JWT de cliente emitido pela Lambda;
 - proteger rotas de OS com autorização contextual;
-- expor healthchecks, métricas Prometheus e traces OpenTelemetry.
+- expor healthchecks, métricas da aplicação e traces OpenTelemetry.
 
 ## Stack
 - Python 3.12
@@ -16,7 +16,7 @@ API principal FastAPI da Fase 3 do Tech Challenge FIAP.
 - Alembic
 - Kubernetes/k3s
 - OpenTelemetry
-- Datadog com apoio Prometheus/Grafana
+- Datadog e Grafana
 
 ## Execução local
 ```bash
@@ -48,6 +48,8 @@ make test
 ## Kubernetes
 O repositório mantém `Deployment`, `Service`, `Ingress`, `ConfigMap`, `Secret`, `HPA` e `Job` de migration.
 
+As imagens de deploy devem ser renderizadas explicitamente nos manifests, preferencialmente como `ghcr.io/<owner>/service-order-api:sha-<commit>`. O workflow atual usa tags `sha-*`, evitando reaproveitamento de tags mutáveis no k3s.
+
 ## CI/CD
 - PR: lint, tests, coverage, render de manifests
 - `homolog`: build/push GHCR e deploy homolog
@@ -73,3 +75,17 @@ O repositório mantém `Deployment`, `Service`, `Ingress`, `ConfigMap`, `Secret`
 - [component-diagram.md](/mnt/c/service-order-api/docs/architecture/component-diagram.md)
 - [sequence-auth-and-open-service-order.md](/mnt/c/service-order-api/docs/architecture/sequence-auth-and-open-service-order.md)
 - [database-er.md](/mnt/c/service-order-api/docs/architecture/database-er.md)
+- [fase3-checklist.md](/mnt/c/service-order-api/docs/architecture/fase3-checklist.md)
+- [video-script.md](/mnt/c/service-order-api/docs/architecture/video-script.md)
+
+## ADRs e RFCs canônicos
+- [ADR-0001-k3s-em-ec2.md](/mnt/c/service-order-api/docs/adr/ADR-0001-k3s-em-ec2.md)
+- [ADR-0002-postgresql-rds.md](/mnt/c/service-order-api/docs/adr/ADR-0002-postgresql-rds.md)
+- [ADR-0003-api-gateway-lambda-auth.md](/mnt/c/service-order-api/docs/adr/ADR-0003-api-gateway-lambda-auth.md)
+- [ADR-0004-jwt-compartilhado.md](/mnt/c/service-order-api/docs/adr/ADR-0004-jwt-compartilhado.md)
+- [ADR-0005-observabilidade.md](/mnt/c/service-order-api/docs/adr/ADR-0005-observabilidade.md)
+- [ADR-0006-hpa.md](/mnt/c/service-order-api/docs/adr/ADR-0006-hpa.md)
+- [RFC-0001-multi-repo.md](/mnt/c/service-order-api/docs/rfc/RFC-0001-multi-repo.md)
+- [RFC-0002-auth-cpf.md](/mnt/c/service-order-api/docs/rfc/RFC-0002-auth-cpf.md)
+- [RFC-0003-ambientes-deploy.md](/mnt/c/service-order-api/docs/rfc/RFC-0003-ambientes-deploy.md)
+- [RFC-0004-observabilidade.md](/mnt/c/service-order-api/docs/rfc/RFC-0004-observabilidade.md)

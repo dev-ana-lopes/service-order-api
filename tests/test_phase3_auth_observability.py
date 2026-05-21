@@ -34,7 +34,6 @@ from tests.support import (
     create_test_app,
 )
 
-
 TEST_CUSTOMER_ID = UUID("11111111-1111-1111-1111-111111111111")
 
 
@@ -167,7 +166,12 @@ async def test_invalid_customer_token_returns_401():
     app.dependency_overrides[get_settings] = lambda: settings
     transport = ASGITransport(app=app)
     token = jwt.encode(
-        {"sub": "123", "role": "customer", "customer_id": "1", "iss": settings.CUSTOMER_JWT_ISSUER},
+        {
+            "sub": "123",
+            "role": "customer",
+            "customer_id": "1",
+            "iss": settings.CUSTOMER_JWT_ISSUER,
+        },
         "wrong-secret",
         algorithm="HS256",
     )
@@ -181,7 +185,57 @@ async def test_invalid_customer_token_returns_401():
 
 
 @pytest.mark.asyncio
-async def test_customer_token_can_create_and_read_own_service_order(phase3_customer_context):
+async def test_valid_customer_token_is_verified_by_real_dependency():
+    settings = Settings(
+        DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/db",
+        JWT_SECRET="admin-secret-value-with-32-characters",
+        CUSTOMER_JWT_SECRET="customer-secret-value-with-32-characters",
+        CUSTOMER_JWT_ISSUER="service-order-auth-lambda/test",
+        APPROVAL_TOKEN_SECRET="approval-secret-value-with-32-chars",
+        SMTP_HOST="mailhog",
+        SMTP_PORT=1025,
+        SMTP_USE_TLS=False,
+        SMTP_USE_AUTH=False,
+        APP_BASE_URL="http://testserver",
+        ENVIRONMENT="test",
+        LOG_JSON=True,
+        OTEL_ENABLED=False,
+    )
+    service_order_repo = MockServiceOrderRepository()
+
+    async def override_service_order_repo():
+        return service_order_repo
+
+    app = create_test_app()
+    app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_service_order_repository] = override_service_order_repo
+    transport = ASGITransport(app=app)
+    token = jwt.encode(
+        {
+            "sub": "11144477735",
+            "role": "customer",
+            "customer_id": str(TEST_CUSTOMER_ID),
+            "iss": settings.CUSTOMER_JWT_ISSUER,
+        },
+        settings.CUSTOMER_JWT_SECRET,
+        algorithm=settings.CUSTOMER_JWT_ALGORITHM,
+    )
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get(
+            "/service-orders/active",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+@pytest.mark.asyncio
+async def test_customer_token_can_create_and_read_own_service_order(
+    phase3_customer_context,
+):
     customer = Customer(
         id=TEST_CUSTOMER_ID,
         name="Cliente",
@@ -235,9 +289,13 @@ async def test_customer_token_can_create_and_read_own_service_order(phase3_custo
 
 
 @pytest.mark.asyncio
-async def test_customer_token_cannot_read_other_customer_service_order(phase3_customer_context):
+async def test_customer_token_cannot_read_other_customer_service_order(
+    phase3_customer_context,
+):
     order_id = uuid4()
-    phase3_customer_context["service_order_repo"].service_orders[order_id] = ServiceOrder(
+    phase3_customer_context["service_order_repo"].service_orders[
+        order_id
+    ] = ServiceOrder(
         id=order_id,
         customer_id=UUID("22222222-2222-2222-2222-222222222222"),
         vehicle_id=uuid4(),
@@ -253,7 +311,7 @@ async def test_customer_token_cannot_read_other_customer_service_order(phase3_cu
 
 
 @pytest.mark.asyncio
-async def test_metrics_endpoint_returns_prometheus_payload():
+async def test_metrics_endpoint_returns_application_metrics_payload():
     app = create_test_app()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:

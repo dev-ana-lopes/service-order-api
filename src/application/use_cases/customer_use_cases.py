@@ -51,7 +51,7 @@ class UpdateCustomerUseCase:
         cpf_cnpj: str | None,
         email: str,
         phone: str,
-        is_active: bool,
+        is_active: bool = True,
     ) -> bool:
         existing = await self.customer_repo.get_by_id(customer_id)
         if existing is None:
