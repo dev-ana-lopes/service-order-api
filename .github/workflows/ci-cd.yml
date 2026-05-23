@@ -188,5 +188,16 @@ jobs:
           EOF
       - name: Smoke test public API
         run: |
-          curl -f "http://${{ vars.EC2_HOST }}/health"
-          curl -f "http://${{ vars.EC2_HOST }}/health/ready"
+          for i in {1..12}; do
+            if curl -f "http://${{ vars.EC2_HOST }}/health" && \
+               curl -f "http://${{ vars.EC2_HOST }}/health/ready"; then
+              echo "Public API smoke test passed"
+              exit 0
+            fi
+
+            echo "Public API not ready yet. Attempt ${i}/12"
+            sleep 10
+          done
+
+          echo "Public API smoke test failed"
+          exit 1
