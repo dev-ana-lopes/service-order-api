@@ -32,7 +32,7 @@ jobs:
       - run: make lint
       - name: Run tests with coverage
         env:
-          ENVIRONMENT: test
+          ENVIRONMENT: development
           DATABASE_URL: "sqlite+aiosqlite:///:memory:"
           JWT_SECRET: "test-admin-secret-with-enough-length"
           CUSTOMER_JWT_SECRET: "test-customer-secret-with-enough-length"
