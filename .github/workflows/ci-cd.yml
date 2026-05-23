@@ -92,8 +92,63 @@ jobs:
           python3 scripts/deploy/render_k8s_manifests.py \
             --env-file .env.deploy \
             --output-dir "${{ env.RENDERED_K8S_DIR }}" \
-            --image "${{ needs.build-publish.outputs.image_ref }}"
-      - name: Deploy instructions placeholder
+            --image "${{ needs.build-publish.outputs.image_ref }}"     
+      - name: Configure SSH key
         run: |
-          echo "Apply rendered manifests from ${{ env.RENDERED_K8S_DIR }} to the target k3s cluster"
-          echo "This workflow expects kubectl/auth bootstrap to be configured per environment."
+          mkdir -p ~/.ssh
+          printf '%s' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key.pem
+          chmod 600 ~/.ssh/ec2_key.pem
+          ssh-keyscan -p "${{ vars.EC2_PORT }}" "${{ vars.EC2_HOST }}" >> ~/.ssh/known_hosts
+      - name: Copy rendered manifests to EC2
+        run: |
+          ssh -i ~/.ssh/ec2_key.pem \
+            -p "${{ vars.EC2_PORT }}" \
+            "${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}" \
+            "rm -rf /home/${{ vars.EC2_USER }}/.rendered-k8s && mkdir -p /home/${{ vars.EC2_USER }}/.rendered-k8s"
+
+          scp -i ~/.ssh/ec2_key.pem \
+            -P "${{ vars.EC2_PORT }}" \
+            -r "${{ env.RENDERED_K8S_DIR }}/." \
+            "${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/.rendered-k8s/"
+      - name: Apply manifests on k3s
+        run: |
+          ssh -i ~/.ssh/ec2_key.pem \
+            -p "${{ vars.EC2_PORT }}" \
+            "${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}" <<'EOF'
+          set -euo pipefail
+
+          kubectl apply -f /home/ec2-user/.rendered-k8s/namespace.yaml
+          kubectl apply -f /home/ec2-user/.rendered-k8s/configmap.rendered.yaml
+          kubectl apply -f /home/ec2-user/.rendered-k8s/secret.rendered.yaml
+
+          kubectl delete job -n service-order service-order-api-migrate --ignore-not-found
+          kubectl apply -f /home/ec2-user/.rendered-k8s/job-migrate.yaml
+          kubectl wait --for=condition=complete job/service-order-api-migrate -n service-order --timeout=300s
+
+          kubectl apply -f /home/ec2-user/.rendered-k8s/deployment.yaml
+          kubectl apply -f /home/ec2-user/.rendered-k8s/service.yaml
+          kubectl apply -f /home/ec2-user/.rendered-k8s/hpa.yaml
+
+          if [ -f /home/ec2-user/.rendered-k8s/ingress.yaml ]; then
+            kubectl apply -f /home/ec2-user/.rendered-k8s/ingress.yaml
+            kubectl patch ingress service-order-api \
+              -n service-order \
+              --type='json' \
+              -p='[
+                {
+                  "op": "replace",
+                  "path": "/spec/rules/0/http/paths/0/path",
+                  "value": "/"
+                }
+              ]' || true
+          fi
+
+          kubectl rollout status deployment/service-order-api -n service-order --timeout=300s
+          kubectl get pods -n service-order
+          kubectl get svc -n service-order
+          kubectl get ingress -n service-order || true
+          EOF
+      - name: Smoke test public API
+        run: |
+          curl -f "http://${{ vars.EC2_HOST }}/health"
+          curl -f "http://${{ vars.EC2_HOST }}/health/ready"
