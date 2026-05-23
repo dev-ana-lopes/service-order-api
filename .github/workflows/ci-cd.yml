@@ -3,7 +3,7 @@ name: ci-cd-service-order-api
 on:
   pull_request:
   push:
-    branches: [main, homolog]
+    branches: [main, homolog, develop]
   workflow_dispatch:
 
 permissions:
