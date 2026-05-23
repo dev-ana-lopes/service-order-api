@@ -135,8 +135,32 @@ jobs:
           kubectl apply -f /home/ec2-user/.rendered-k8s/configmap.rendered.yaml
           kubectl apply -f /home/ec2-user/.rendered-k8s/secret.rendered.yaml
 
+          DATABASE_URL_API="$(kubectl get secret -n service-order service-order-api-secret -o jsonpath='{.data.DATABASE_URL}' | base64 -d)"
+          DATABASE_URL_MIGRATION="$(printf '%s' "$DATABASE_URL_API" | sed 's/?ssl=require/?sslmode=require/g')"
+
+          kubectl create secret generic service-order-api-migrate-secret \
+            -n service-order \
+            --from-literal=DATABASE_URL="$DATABASE_URL_MIGRATION" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
           kubectl delete job -n service-order service-order-api-migrate --ignore-not-found
-          kubectl apply -f /home/ec2-user/.rendered-k8s/job-migrate.yaml
+
+          kubectl patch -n service-order -f /home/ec2-user/.rendered-k8s/job-migrate.yaml \
+            --local=true \
+            --type='json' \
+            -p='[
+              {
+                "op": "add",
+                "path": "/spec/template/spec/containers/0/envFrom/-",
+                "value": {
+                  "secretRef": {
+                    "name": "service-order-api-migrate-secret"
+                  }
+                }
+              }
+            ]' \
+            -o yaml > /tmp/job-migrate.yaml
+          kubectl apply -f /tmp/job-migrate.yaml
           kubectl wait --for=condition=complete job/service-order-api-migrate -n service-order --timeout=300s
 
           kubectl apply -f /home/ec2-user/.rendered-k8s/deployment.yaml
