@@ -30,7 +30,21 @@ jobs:
           cache-dependency-glob: uv.lock
       - run: uv sync --locked --dev
       - run: make lint
-      - run: make test-cov
+      - name: Run tests with coverage
+        env:
+          ENVIRONMENT: test
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          JWT_SECRET: "test-admin-secret-with-enough-length"
+          CUSTOMER_JWT_SECRET: "test-customer-secret-with-enough-length"
+          CUSTOMER_JWT_ISSUER: "service-order-auth-lambda/test"
+          JWT_ALGORITHM: "HS256"
+          JWT_EXPIRATION_MINUTES: "60"
+          APPROVAL_TOKEN_SECRET: "test-approval-secret-with-enough-length"
+          APPROVAL_TOKEN_TTL_MINUTES: "60"
+          EMAIL_PROVIDER: "NOOP"
+          OTEL_ENABLED: "false"
+          DD_TRACE_ENABLED: "false"
+        run: make test-cov
       - name: Validate rendered manifests
         run: |
           TMP_DIR="$(mktemp -d)"
