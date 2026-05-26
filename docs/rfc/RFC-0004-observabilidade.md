@@ -2,8 +2,12 @@
 
 ## Proposta
 
-Padronizar métricas, logs com correlation id e tracing opcional por OpenTelemetry.
+Padronizar a observabilidade da entrega atual em Datadog, cobrindo logs de
+containers, logs JSON com correlation id/request id, visibilidade Kubernetes,
+dashboards/monitores e Synthetic Monitoring para health/readiness via API
+Gateway.
 
-## Motivação
+## Motivacao
 
-Permitir diagnóstico básico da demo sem acoplar a API a um provedor único.
+Permitir diagnostico da demo em uma ferramenta unica e ja escolhida para a
+entrega, sem habilitar traces OTLP antes de validar a porta `4318` no Agent.

@@ -111,7 +111,8 @@ class Settings(BaseSettings):
     DD_ENV: str = "development"
     DD_VERSION: str = "3.0.0"
     DD_API_KEY: str = ""
-    OTEL_ENABLED: bool = True
+    DD_TRACE_ENABLED: bool = False
+    OTEL_ENABLED: bool = False
     OTEL_SERVICE_NAME: str = "service-order-api"
     OTEL_EXPORTER_OTLP_ENDPOINT: str = ""
 

@@ -10,8 +10,14 @@ htmlcov/
 !.env.example
 !.env.prod.example
 .rendered-k8s/
+build/
+review/
 infra/.terraform/
 infra/*.tfstate*
 infra/terraform.tfvars
+terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
 *.log
 .DS_Store

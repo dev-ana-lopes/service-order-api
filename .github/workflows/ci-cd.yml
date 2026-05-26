@@ -44,6 +44,7 @@ jobs:
           EMAIL_PROVIDER: "NOOP"
           OTEL_ENABLED: "false"
           DD_TRACE_ENABLED: "false"
+          OTEL_EXPORTER_OTLP_ENDPOINT: ""
         run: make test-cov
       - name: Validate rendered manifests
         run: |
@@ -68,9 +69,10 @@ jobs:
           JWT_ALGORITHM=HS256
           JWT_EXPIRATION_MINUTES=60
           APPROVAL_TOKEN_TTL_MINUTES=60
-          OTEL_ENABLED=true
+          OTEL_ENABLED=false
           OTEL_SERVICE_NAME=service-order-api
-          OTEL_EXPORTER_OTLP_ENDPOINT=http://datadog-agent.observability:4318/v1/traces
+          OTEL_EXPORTER_OTLP_ENDPOINT=
+          DD_TRACE_ENABLED=false
           DD_SERVICE=service-order-api
           DD_ENV=production
           DD_VERSION=3.0.0
